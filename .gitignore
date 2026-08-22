@@ -1,0 +1,28 @@
+# Ignore datasets and generated data files
+Datasets/
+data/
+*.npy
+*.parquet
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# LaTeX build artifacts (keep .tex and .pdf)
+Summary/*.aux
+Summary/*.log
+Summary/*.out
+Summary/*.toc
+Summary/*.synctex.gz
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+Scratch/
