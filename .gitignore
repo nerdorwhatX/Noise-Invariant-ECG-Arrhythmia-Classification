@@ -10,12 +10,23 @@ __pycache__/
 .venv/
 *.egg-info/
 
-# LaTeX build artifacts (keep .tex and .pdf)
-Summary/*.aux
-Summary/*.log
-Summary/*.out
-Summary/*.toc
-Summary/*.synctex.gz
+# LaTeX, Reports, PDFs, and Temp Artifacts
+*.tex
+*.pdf
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+*.lof
+*.lot
+*.dvi
+*.bcf
+*.run.xml
 
 # IDE
 .vscode/
@@ -26,3 +37,4 @@ Summary/*.synctex.gz
 Thumbs.db
 
 Scratch/
+SCRATCH_KNOWLEDGE_BASE.md
