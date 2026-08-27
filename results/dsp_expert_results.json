@@ -75,7 +75,6 @@
         }
     },
     "rule_triggers": {
-        "Unknown": 3,
         "N_Matched_Reference": 34013,
         "N_default": 433,
         "S_Irregular_Eccentric": 38,
@@ -86,5 +85,5 @@
         "V_Morphology_Distortion": 1,
         "F_Moderate_Distortion": 6
     },
-    "execution_time_seconds": 130.05238795280457
+    "execution_time_seconds": 173.46566939353943
 }

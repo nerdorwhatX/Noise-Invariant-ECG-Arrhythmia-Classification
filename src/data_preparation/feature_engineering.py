@@ -22,18 +22,24 @@ import os
 import sys
 import numpy as np
 import pandas as pd
+import logging
 from scipy.stats import skew, kurtosis
 from scipy.signal import correlate
 from scipy.spatial import ConvexHull
+from scipy.spatial.qhull import QhullError
 from scipy.interpolate import interp1d
 from joblib import Parallel, delayed
 import warnings
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 FS = 360  # MIT-BIH sampling frequency
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+project_root = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "..", ".."))
 DATA_DIR = os.path.join(project_root, "data")
 
 
@@ -57,7 +63,7 @@ def _extract_geometric_features(beat, tau=8):
             raise ValueError
         hull = ConvexHull(points)
         area, perimeter = hull.volume, hull.area
-    except Exception:
+    except (QhullError, ValueError):
         area, perimeter = 0.0, 0.0
 
     # PCA ellipse
@@ -67,7 +73,7 @@ def _extract_geometric_features(beat, tau=8):
         sd2 = np.sqrt(max(eigenvalues[0], 1e-12))
         sd1 = np.sqrt(max(eigenvalues[1], 1e-12))
         eccentricity = np.sqrt(1.0 - (sd1**2 / sd2**2)) if sd2 > sd1 else 0.0
-    except Exception:
+    except (np.linalg.LinAlgError, ValueError):
         sd1, sd2, eccentricity = 0.0, 0.0, 0.0
 
     # Angular dispersion
@@ -123,7 +129,8 @@ def regional_features(beat, fs=FS):
 
     qrs_start = max(0, center - int(0.05 * fs))
     qrs_end = min(len(beat), center + int(0.05 * fs))
-    qrs_region = beat[qrs_start:qrs_end] if qrs_end > qrs_start else np.zeros(1)
+    qrs_region = beat[qrs_start:qrs_end] if qrs_end > qrs_start else np.zeros(
+        1)
 
     t_start = min(len(beat), center + int(0.10 * fs))
     t_end = min(len(beat), center + int(0.30 * fs))
@@ -206,8 +213,10 @@ def wavelet_features(beat, wavelet='db4', level=4):
         total = sum(energies) + 1e-8
         norm_e = [e / total for e in energies]
         approx_detail = energies[0] / (sum(energies[1:]) + 1e-8)
-        high_low = (energies[1] + energies[2]) / (energies[3] + energies[4] + 1e-8) if len(energies) >= 5 else 0.0
-        detail_entropy = -np.sum([e/total * np.log2(e/total + 1e-12) for e in energies[1:]])
+        high_low = (energies[1] + energies[2]) / (energies[3] +
+                                                  energies[4] + 1e-8) if len(energies) >= 5 else 0.0
+        detail_entropy = - \
+            np.sum([e/total * np.log2(e/total + 1e-12) for e in energies[1:]])
         return np.array(norm_e + [approx_detail, high_low, detail_entropy], dtype=np.float32)
     except ImportError:
         return np.zeros(8, dtype=np.float32)
@@ -289,7 +298,8 @@ def tda_features(beat, tau=8):
     h1 = dgms[1] if len(dgms) > 1 else np.array([]).reshape(0, 2)
 
     def _stats(dgm):
-        finite = dgm[np.isfinite(dgm[:, 1])] if len(dgm) > 0 else np.array([]).reshape(0, 2)
+        finite = dgm[np.isfinite(dgm[:, 1])] if len(
+            dgm) > 0 else np.array([]).reshape(0, 2)
         if len(finite) == 0:
             return [0]*9
         lifetimes = np.maximum(finite[:, 1] - finite[:, 0], 0)
@@ -300,7 +310,8 @@ def tda_features(beat, tau=8):
         return [
             len(finite), float(np.max(lifetimes)), float(np.mean(lifetimes)),
             float(np.std(lifetimes)), float(total), float(entropy),
-            float(np.max(finite[:, 0])), float(np.max(finite[:, 1])), float(midlife)
+            float(np.max(finite[:, 0])), float(
+                np.max(finite[:, 1])), float(midlife)
         ]
 
     s0 = _stats(h0)
@@ -316,13 +327,15 @@ def tda_features(beat, tau=8):
     entropy_ratio = s1[5] / (s0[5] + 1e-8) if len(s0) > 5 else 0.0
     total_features = s0[0] + s1[0]
     dominant = max(s0[1], s1[1])
-    h1_finite = h1[np.isfinite(h1[:, 1])] if len(h1) > 0 else np.array([]).reshape(0, 2)
+    h1_finite = h1[np.isfinite(h1[:, 1])] if len(
+        h1) > 0 else np.array([]).reshape(0, 2)
     if len(h1_finite) > 1:
         lt = h1_finite[:, 1] - h1_finite[:, 0]
         persist_range = float(np.max(lt) - np.min(lt))
     else:
         persist_range = 0.0
-    f_cross = [h1_h0_persist, h1_h0_count, entropy_ratio, total_features, dominant, persist_range]
+    f_cross = [h1_h0_persist, h1_h0_count, entropy_ratio,
+               total_features, dominant, persist_range]
 
     return np.array(f_h0 + f_h1 + f_cross, dtype=np.float32)
 
@@ -346,13 +359,13 @@ def extract_single_beat(i, X, rr, templates, include_tda=True):
     rr_window = rr[w_start:w_end]
 
     f1 = phase_space_features(beat)                               # 24
-    f2 = rr_context_features(rr_cur, rr_prev, rr_next, rr_window) # 8
+    f2 = rr_context_features(rr_cur, rr_prev, rr_next, rr_window)  # 8
     f3 = regional_features(beat)                                  # 12
     f4 = stat_features(beat)                                      # 8
     f5 = template_correlation(beat, templates)                    # 4
     f6 = wavelet_features(beat)                                   # 8
     f7 = autocorr_features(beat)                                  # 4
-    f_takens = np.array([takens_excursion(i, rr)], dtype=np.float32) # 1
+    f_takens = np.array([takens_excursion(i, rr)], dtype=np.float32)  # 1
 
     parts = [f1, f2, f3, f4, f5, f6, f7, f_takens]
 
@@ -369,7 +382,7 @@ def extract_all(X, y, rr, include_tda=True, n_jobs=4):
 
     tda_str = "+TDA" if include_tda else ""
     n_feat = "~89" if include_tda else "~69"
-    print(f"  Extracting {len(X)} beats × {n_feat} DSP{tda_str} features using {n_jobs} cores...")
+    logger.info(f"Extracting {len(X)} beats × {n_feat} DSP{tda_str} features using {n_jobs} cores...")
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -383,26 +396,26 @@ def extract_all(X, y, rr, include_tda=True, n_jobs=4):
     # Replace NaN/Inf
     features = np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0)
 
-    print(f"  Feature matrix shape: {features.shape}")
+    logger.info(f"Feature matrix shape: {features.shape}")
     return features
 
 
 def main():
-    print("=" * 60)
-    print("Feature Engineering Pipeline")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("Feature Engineering Pipeline")
+    logger.info("=" * 60)
 
     # Check for ripser
     try:
         import ripser
         include_tda = True
-        print("  ripser found — TDA features ENABLED")
+        logger.info("ripser found — TDA features ENABLED")
     except ImportError:
         include_tda = False
-        print("  ripser NOT found — TDA features DISABLED (69 features only)")
+        logger.info("ripser NOT found — TDA features DISABLED (69 features only)")
 
     for split in ["DS1", "DS2"]:
-        print(f"\n--- Processing {split} ---")
+        logger.info(f"\n--- Processing {split} ---")
         X = np.load(os.path.join(DATA_DIR, f"{split}_X_raw.npy"))
         y = np.load(os.path.join(DATA_DIR, f"{split}_y.npy"))
 
@@ -413,7 +426,7 @@ def main():
             rr = np.load(rr_path)
         else:
             # Approximate: use constant RR for missing data
-            print(f"  WARNING: {split}_rr.npy not found, using uniform RR=300")
+            logger.warning(f"{split}_rr.npy not found, using uniform RR=300")
             rr = np.full(len(X), 300.0, dtype=np.float32)
 
         features = extract_all(X, y, rr, include_tda=include_tda, n_jobs=4)
@@ -423,12 +436,12 @@ def main():
         df = pd.DataFrame(features)
         df['label'] = y
         df.to_parquet(out_path, index=False)
-        print(f"  Saved: {out_path} ({df.shape[0]} rows × {df.shape[1]} cols)")
+        logger.info(f"Saved: {out_path} ({df.shape[0]} rows × {df.shape[1]} cols)")
 
         # Also save as .npy for convenience
         np.save(os.path.join(DATA_DIR, f"{split}_features.npy"), features)
 
-    print("\n[DONE] Feature engineering complete!")
+    logger.info("[DONE] Feature engineering complete!")
 
 
 if __name__ == "__main__":

@@ -8,6 +8,10 @@ physically valid.
 """
 import numpy as np
 from scipy.interpolate import interp1d
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 def time_shift(beat, max_shift=10):
@@ -36,13 +40,16 @@ def time_warp(beat, low=0.85, high=1.15):
     knot_warps[-1] = 1.0  # anchor end
 
     # Build cumulative warp
-    warp_fn = interp1d(knot_positions, knot_warps, kind='linear', fill_value='extrapolate')
+    warp_fn = interp1d(knot_positions, knot_warps,
+                       kind='linear', fill_value='extrapolate')
     warp_factors = warp_fn(np.arange(n))
     warped_indices = np.cumsum(warp_factors)
-    warped_indices = warped_indices / warped_indices[-1] * (n - 1)  # normalize to [0, n-1]
+    warped_indices = warped_indices / \
+        warped_indices[-1] * (n - 1)  # normalize to [0, n-1]
 
     # Resample
-    original_fn = interp1d(np.arange(n), beat, kind='cubic', fill_value='extrapolate')
+    original_fn = interp1d(
+        np.arange(n), beat, kind='cubic', fill_value='extrapolate')
     return original_fn(warped_indices).astype(np.float32)
 
 
@@ -82,14 +89,15 @@ def balance_dataset(X, y, rr, rec=None, target_ratio=1.0, seed=42):
 
     classes, counts = np.unique(y, return_counts=True)
     max_count = int(np.max(counts) * target_ratio)
-    
+
     total_size = sum(max(c, max_count) for c in counts)
-    
+
     X_bal = np.empty((total_size, X.shape[1]), dtype=np.float32)
     y_bal = np.empty(total_size, dtype=np.int64)
     rr_bal = np.empty(total_size, dtype=np.float32)
-    rec_bal = np.empty(total_size, dtype=rec.dtype) if rec is not None else None
-    
+    rec_bal = np.empty(
+        total_size, dtype=rec.dtype) if rec is not None else None
+
     # Copy original data
     orig_size = len(X)
     X_bal[:orig_size] = X
@@ -97,25 +105,25 @@ def balance_dataset(X, y, rr, rec=None, target_ratio=1.0, seed=42):
     rr_bal[:orig_size] = rr
     if rec is not None:
         rec_bal[:orig_size] = rec
-        
+
     idx = orig_size
-    
+
     for cls in classes:
         cls_mask = y == cls
         cls_count = np.sum(cls_mask)
         if cls_count >= max_count:
             continue
-            
+
         n_needed = max_count - cls_count
         cls_indices = np.where(cls_mask)[0]
-        
+
         for _ in range(n_needed):
             rand_idx = np.random.choice(cls_indices)
-            
+
             rr_cur = rr[rand_idx]
             rr_prev = rr[rand_idx - 1] if rand_idx > 0 else rr_cur
             rr_next = rr[rand_idx + 1] if rand_idx < len(rr) - 1 else rr_cur
-            
+
             X_bal[idx] = augment_beat(X[rand_idx], rr_cur, rr_prev, rr_next)
             y_bal[idx] = cls
             rr_bal[idx] = rr_cur
@@ -136,46 +144,46 @@ def synthesize_fusion_beats(X, y, rr, rec, num_fusion_beats, seed=42):
     from the *same patient* in the time domain.
     """
     rng = np.random.RandomState(seed)
-    
+
     synth_beats = []
     synth_labels = []
     synth_rrs = []
     synth_recs = []
-    
+
     patients = np.unique(rec)
-    
+
     patient_nv_indices = {}
     for p in patients:
         p_mask = rec == p
-        n_idx = np.where(p_mask & (y == 0))[0] # N
-        v_idx = np.where(p_mask & (y == 2))[0] # V
+        n_idx = np.where(p_mask & (y == 0))[0]  # N
+        v_idx = np.where(p_mask & (y == 2))[0]  # V
         if len(n_idx) > 0 and len(v_idx) > 0:
             patient_nv_indices[p] = (n_idx, v_idx)
-            
+
     valid_patients = list(patient_nv_indices.keys())
     if not valid_patients:
-        print("Warning: No patients have both N and V beats to synthesize F beats.")
+        logger.warning("No patients have both N and V beats to synthesize F beats.")
         return X, y, rr, rec
-        
+
     for _ in range(num_fusion_beats):
         p = rng.choice(valid_patients)
         n_idx, v_idx = patient_nv_indices[p]
-        
+
         n_beat_idx = rng.choice(n_idx)
         v_beat_idx = rng.choice(v_idx)
-        
+
         n_beat = X[n_beat_idx]
         v_beat = X[v_beat_idx]
-        
+
         alpha = rng.uniform(0.3, 0.7)
         f_synth = alpha * n_beat + (1 - alpha) * v_beat
         rr_synth = alpha * rr[n_beat_idx] + (1 - alpha) * rr[v_beat_idx]
-        
+
         synth_beats.append(f_synth.astype(np.float32))
-        synth_labels.append(3) # F
+        synth_labels.append(3)  # F
         synth_rrs.append(np.float32(rr_synth))
         synth_recs.append(p)
-        
+
     return (
         np.vstack([X, np.array(synth_beats, dtype=np.float32)]),
         np.concatenate([y, np.array(synth_labels, dtype=np.int64)]),

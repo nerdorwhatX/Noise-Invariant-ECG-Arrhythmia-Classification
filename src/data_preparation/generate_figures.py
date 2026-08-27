@@ -6,15 +6,18 @@ Creates:
   2. Sample raw ECG waveforms for each AAMI class
   3. Pipeline flowchart (saved as a diagram)
 """
+import matplotlib.pyplot as plt
 import os
-import sys
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
+import logging
 
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+matplotlib.use('Agg')
+
+project_root = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "..", ".."))
 SUMMARY_DIR = os.path.join(project_root, "Summary", "figures")
 DATA_DIR = os.path.join(project_root, "data")
 
@@ -34,8 +37,10 @@ def fig1_class_distribution():
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     # Before
-    bars = axes[0].bar(before.keys(), before.values(), color=CLASS_COLORS, edgecolor='black', linewidth=0.8)
-    axes[0].set_title('DS1 Class Distribution (Before Balancing)', fontsize=13, fontweight='bold')
+    bars = axes[0].bar(before.keys(), before.values(),
+                       color=CLASS_COLORS, edgecolor='black', linewidth=0.8)
+    axes[0].set_title('DS1 Class Distribution (Before Balancing)',
+                      fontsize=13, fontweight='bold')
     axes[0].set_ylabel('Number of Beats', fontsize=11)
     axes[0].set_yscale('log')
     for bar, val in zip(bars, before.values()):
@@ -43,8 +48,10 @@ def fig1_class_distribution():
                      f'{val:,}', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
     # After
-    bars = axes[1].bar(after.keys(), after.values(), color=CLASS_COLORS, edgecolor='black', linewidth=0.8)
-    axes[1].set_title('DS1 Class Distribution (After V-Augmentation)', fontsize=13, fontweight='bold')
+    bars = axes[1].bar(after.keys(), after.values(),
+                       color=CLASS_COLORS, edgecolor='black', linewidth=0.8)
+    axes[1].set_title(
+        'DS1 Class Distribution (After V-Augmentation)', fontsize=13, fontweight='bold')
     axes[1].set_ylabel('Number of Beats', fontsize=11)
     axes[1].set_yscale('log')
     for bar, val in zip(bars, after.values()):
@@ -55,7 +62,7 @@ def fig1_class_distribution():
     path = os.path.join(SUMMARY_DIR, "class_distribution.png")
     plt.savefig(path, dpi=200, bbox_inches='tight')
     plt.close()
-    print(f"  Saved: {path}")
+    logger.info(f"Saved: {path}")
 
 
 def fig2_sample_waveforms():
@@ -70,34 +77,40 @@ def fig2_sample_waveforms():
         ax = axes[cls_idx]
         mask = y == cls_idx
         if np.sum(mask) == 0:
-            ax.text(0.5, 0.5, 'No samples', ha='center', va='center', transform=ax.transAxes)
+            ax.text(0.5, 0.5, 'No samples', ha='center',
+                    va='center', transform=ax.transAxes)
             ax.set_title(CLASS_NAMES[cls_idx])
             continue
 
         # Plot 5 overlaid samples
         indices = np.where(mask)[0]
         np.random.seed(42)
-        sample_idx = np.random.choice(indices, min(5, len(indices)), replace=False)
+        sample_idx = np.random.choice(
+            indices, min(5, len(indices)), replace=False)
 
         for i, idx in enumerate(sample_idx):
             alpha = 0.9 if i == 0 else 0.4
             lw = 1.5 if i == 0 else 0.8
-            ax.plot(X[idx], color=CLASS_COLORS[cls_idx], alpha=alpha, linewidth=lw)
+            ax.plot(X[idx], color=CLASS_COLORS[cls_idx],
+                    alpha=alpha, linewidth=lw)
 
-        ax.set_title(CLASS_NAMES[cls_idx], fontsize=13, fontweight='bold', color=CLASS_COLORS[cls_idx])
+        ax.set_title(CLASS_NAMES[cls_idx], fontsize=13,
+                     fontweight='bold', color=CLASS_COLORS[cls_idx])
         ax.set_xlabel('Sample Index', fontsize=10)
         ax.set_ylabel('Amplitude (mV)', fontsize=10)
         ax.grid(True, alpha=0.3)
-        ax.axvline(x=90, color='red', linestyle='--', alpha=0.5, label='R-peak')
+        ax.axvline(x=90, color='red', linestyle='--',
+                   alpha=0.5, label='R-peak')
         if cls_idx == 0:
             ax.legend(fontsize=9)
 
-    plt.suptitle('Sample Raw ECG Waveforms by AAMI Class', fontsize=15, fontweight='bold', y=1.02)
+    plt.suptitle('Sample Raw ECG Waveforms by AAMI Class',
+                 fontsize=15, fontweight='bold', y=1.02)
     plt.tight_layout()
     path = os.path.join(SUMMARY_DIR, "sample_waveforms.png")
     plt.savefig(path, dpi=200, bbox_inches='tight')
     plt.close()
-    print(f"  Saved: {path}")
+    logger.info(f"Saved: {path}")
 
 
 def fig3_pipeline_diagram():
@@ -118,12 +131,12 @@ def fig3_pipeline_diagram():
 
     for (x, y, text, color) in boxes:
         rect = plt.Rectangle((x-0.9, y-0.7), 1.8, 1.4, linewidth=2,
-                              edgecolor=color, facecolor=color, alpha=0.15, 
-                              zorder=2, clip_on=False)
+                             edgecolor=color, facecolor=color, alpha=0.15,
+                             zorder=2, clip_on=False)
         ax.add_patch(rect)
         rect_border = plt.Rectangle((x-0.9, y-0.7), 1.8, 1.4, linewidth=2,
-                                     edgecolor=color, facecolor='none', 
-                                     zorder=3, clip_on=False)
+                                    edgecolor=color, facecolor='none',
+                                    zorder=3, clip_on=False)
         ax.add_patch(rect_border)
         ax.text(x, y, text, ha='center', va='center', fontsize=9,
                 fontweight='bold', color=color, zorder=4)
@@ -137,17 +150,18 @@ def fig3_pipeline_diagram():
     ax.annotate('', xy=(10.1, 4.2), xytext=(9.4, 3.4), arrowprops=arrow_props)
     ax.annotate('', xy=(10.1, 1.8), xytext=(9.4, 2.6), arrowprops=arrow_props)
 
-    ax.set_title('Data Preparation Pipeline Overview', fontsize=15, fontweight='bold', pad=20)
+    ax.set_title('Data Preparation Pipeline Overview',
+                 fontsize=15, fontweight='bold', pad=20)
 
     path = os.path.join(SUMMARY_DIR, "pipeline_diagram.png")
     plt.savefig(path, dpi=200, bbox_inches='tight')
     plt.close()
-    print(f"  Saved: {path}")
+    logger.info(f"Saved: {path}")
 
 
 if __name__ == "__main__":
-    print("Generating figures...")
+    logger.info("Generating figures...")
     fig1_class_distribution()
     fig2_sample_waveforms()
     fig3_pipeline_diagram()
-    print("All figures generated.")
+    logger.info("All figures generated.")
