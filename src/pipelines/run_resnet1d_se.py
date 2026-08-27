@@ -37,7 +37,7 @@ def main():
     logger.info(f"Training shape: {X_train.shape}, Testing shape: {X_test.shape}")
 
     # 2. Initialize and Train Model
-    model = ResNet1DClassifier(epochs=10, batch_size=256, lr=0.001)
+    model = ResNet1DClassifier(epochs=100, batch_size=256, lr=0.001)
     
     start_time = time.time()
     logger.info("Training ResNet1D-SE (This may take a while)...")
