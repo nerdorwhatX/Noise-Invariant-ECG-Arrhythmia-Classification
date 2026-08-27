@@ -114,10 +114,16 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.utils.class_weight import compute_class_weight
 
 class ResNet1DClassifier:
-    def __init__(self, epochs=20, batch_size=256, lr=0.001, device=None):
+    """
+    Object-oriented wrapper for the PyTorch ResNet1D-SE model.
+    Provides standard scikit-learn-like fit, predict, save, and load methods.
+    Includes Early Stopping and a StepLR learning rate scheduler for optimal training.
+    """
+    def __init__(self, epochs=100, batch_size=256, lr=0.001, patience=10, device=None):
         self.epochs = epochs
         self.batch_size = batch_size
         self.lr = lr
+        self.patience = patience
         if device is None:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         else:
@@ -125,8 +131,18 @@ class ResNet1DClassifier:
         self.model = ResNet1D(num_classes=4).to(self.device)
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=3)
 
-    def fit(self, X_train, y_train, class_weights=None):
+    def fit(self, X_train, y_train, class_weights=None, validation_split=0.2):
+        """
+        Trains the ResNet1D model using the provided training data.
+        
+        Args:
+            X_train (np.ndarray): Training data of shape (N, Length) or (N, 1, Length).
+            y_train (np.ndarray): Training labels.
+            class_weights (str): If 'balanced', applies balanced class weights to the Loss function.
+            validation_split (float): Fraction of training data to use for early stopping validation.
+        """
         # Ensure dimensions: (N, Channels, Length)
         if len(X_train.shape) == 2:
             X_train = np.expand_dims(X_train, axis=1)
@@ -139,18 +155,27 @@ class ResNet1DClassifier:
             self.criterion = nn.CrossEntropyLoss(weight=class_weights_tensor)
             logger.info(f"Using class weights: {weights}")
         
-        X_tensor = torch.tensor(X_train, dtype=torch.float32)
-        y_tensor = torch.tensor(y_train, dtype=torch.long)
+        # Split into train/val for Early Stopping
+        from sklearn.model_selection import train_test_split
+        X_t, X_v, y_t, y_v = train_test_split(X_train, y_train, test_size=validation_split, stratify=y_train, random_state=42)
         
-        dataset = TensorDataset(X_tensor, y_tensor)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        # Create DataLoaders
+        train_dataset = TensorDataset(torch.tensor(X_t, dtype=torch.float32), torch.tensor(y_t, dtype=torch.long))
+        val_dataset = TensorDataset(torch.tensor(X_v, dtype=torch.float32), torch.tensor(y_v, dtype=torch.long))
+        
+        train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
 
-        self.model.train()
+        best_val_loss = float('inf')
+        epochs_no_improve = 0
+        best_model_state = None
+
         for epoch in range(self.epochs):
-            total_loss = 0
-            correct = 0
-            total = 0
-            for batch_X, batch_y in dataloader:
+            # Training Phase
+            self.model.train()
+            total_train_loss, correct_train, total_train = 0, 0, 0
+            
+            for batch_X, batch_y in train_loader:
                 batch_X, batch_y = batch_X.to(self.device), batch_y.to(self.device)
                 
                 self.optimizer.zero_grad()
@@ -159,16 +184,56 @@ class ResNet1DClassifier:
                 loss.backward()
                 self.optimizer.step()
                 
-                total_loss += loss.item() * batch_X.size(0)
+                total_train_loss += loss.item() * batch_X.size(0)
                 _, predicted = torch.max(outputs.data, 1)
-                total += batch_y.size(0)
-                correct += (predicted == batch_y).sum().item()
+                total_train += batch_y.size(0)
+                correct_train += (predicted == batch_y).sum().item()
             
-            epoch_loss = total_loss / total
-            epoch_acc = correct / total
-            logger.info(f"Epoch [{epoch+1}/{self.epochs}] Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}")
+            train_loss = total_train_loss / total_train
+            train_acc = correct_train / total_train
+            
+            # Validation Phase
+            self.model.eval()
+            total_val_loss, correct_val, total_val = 0, 0, 0
+            with torch.no_grad():
+                for batch_X, batch_y in val_loader:
+                    batch_X, batch_y = batch_X.to(self.device), batch_y.to(self.device)
+                    outputs = self.model(batch_X)
+                    loss = self.criterion(outputs, batch_y)
+                    
+                    total_val_loss += loss.item() * batch_X.size(0)
+                    _, predicted = torch.max(outputs.data, 1)
+                    total_val += batch_y.size(0)
+                    correct_val += (predicted == batch_y).sum().item()
+                    
+            val_loss = total_val_loss / total_val
+            val_acc = correct_val / total_val
+            
+            logger.info(f"Epoch [{epoch+1}/{self.epochs}] Train Loss: {train_loss:.4f} Acc: {train_acc:.4f} | Val Loss: {val_loss:.4f} Acc: {val_acc:.4f}")
+            
+            # Scheduler Step
+            self.scheduler.step(val_loss)
+            
+            # Early Stopping Check
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                epochs_no_improve = 0
+                best_model_state = self.model.state_dict()
+            else:
+                epochs_no_improve += 1
+                if epochs_no_improve >= self.patience:
+                    logger.info(f"Early stopping triggered after {epoch+1} epochs!")
+                    break
+                    
+        # Restore best weights
+        if best_model_state is not None:
+            self.model.load_state_dict(best_model_state)
+            logger.info("Restored best model weights based on validation loss.")
 
     def predict(self, X_test):
+        """
+        Predicts classes for the given test data.
+        """
         if len(X_test.shape) == 2:
             X_test = np.expand_dims(X_test, axis=1)
             
@@ -188,11 +253,13 @@ class ResNet1DClassifier:
         return np.array(predictions)
 
     def save(self, filepath):
+        """Saves the model weights to disk."""
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         torch.save(self.model.state_dict(), filepath)
         logger.info(f"Model saved to {filepath}")
 
     def load(self, filepath):
+        """Loads the model weights from disk."""
         self.model.load_state_dict(torch.load(filepath, map_location=self.device))
         self.model.eval()
         logger.info(f"Model loaded from {filepath}")
