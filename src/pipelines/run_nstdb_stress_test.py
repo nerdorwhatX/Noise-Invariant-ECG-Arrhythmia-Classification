@@ -9,7 +9,8 @@ from src.data_preparation.build_dataset import extract_raw_beats
 from src.models.dsp_expert import DSPExpert
 
 if __name__ == "__main__":
-    nstdb_dir = r"d:\Users\abrar\Downloads\3-1 Projects\EEE 312\Project\Datasets\nstdb"
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    nstdb_dir = os.path.join(project_root, "Datasets", "nstdb")
     snr_levels = ['24', '18', '12', '06', '00', '_6']
     snr_numeric = [24, 18, 12, 6, 0, -6]
     records = ['118', '119']
@@ -54,7 +55,7 @@ if __name__ == "__main__":
         
         print(f"SNR {snr_num}dB -> Accuracy: {acc:.4f} | Weighted F2: {f2:.4f} ({len(y_true)} beats)")
         
-    results_path = r"d:\Users\abrar\Downloads\3-1 Projects\EEE 312\Project\results\nstdb_stress_test.json"
+    results_path = os.path.join(project_root, "results", "nstdb_stress_test.json")
     with open(results_path, 'w') as f:
         json.dump(results, f, indent=4)
     print(f"\nResults saved to {results_path}")

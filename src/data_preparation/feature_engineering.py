@@ -33,7 +33,8 @@ import warnings
 # Constants
 # ---------------------------------------------------------------------------
 FS = 360  # MIT-BIH sampling frequency
-DATA_DIR = r"d:\Users\abrar\Downloads\3-1 Projects\EEE 312\Project\data"
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+DATA_DIR = os.path.join(project_root, "data")
 
 
 # ============================================================================

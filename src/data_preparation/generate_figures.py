@@ -14,8 +14,9 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-SUMMARY_DIR = r"d:\Users\abrar\Downloads\3-1 Projects\EEE 312\Summary\figures"
-DATA_DIR = r"d:\Users\abrar\Downloads\3-1 Projects\EEE 312\Project\data"
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+SUMMARY_DIR = os.path.join(project_root, "Summary", "figures")
+DATA_DIR = os.path.join(project_root, "data")
 
 CLASS_NAMES = ['N (Normal)', 'S (Supra-V)', 'V (Ventricular)', 'F (Fusion)']
 CLASS_COLORS = ['#2ecc71', '#e67e22', '#e74c3c', '#9b59b6']

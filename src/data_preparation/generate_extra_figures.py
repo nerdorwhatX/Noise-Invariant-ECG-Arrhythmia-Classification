@@ -6,8 +6,9 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-RESULTS_DIR = r"d:\Users\abrar\Downloads\3-1 Projects\EEE 312\Project\results"
-SUMMARY_DIR = r"d:\Users\abrar\Downloads\3-1 Projects\EEE 312\Summary\figures"
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+RESULTS_DIR = os.path.join(project_root, "results")
+SUMMARY_DIR = os.path.join(project_root, "Summary", "figures")
 
 os.makedirs(SUMMARY_DIR, exist_ok=True)
 

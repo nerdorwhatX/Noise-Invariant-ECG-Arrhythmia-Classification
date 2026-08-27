@@ -5,9 +5,10 @@ import pandas as pd
 import wfdb
 from joblib import Parallel, delayed
 
-# Import augmentations directly from Scratch folder to reuse the best techniques
-sys.path.append(r"d:\Users\abrar\Downloads\3-1 Projects\EEE 312\Scratch\src")
-from data_utils.signal_augmenter import augment_beat, synthesize_fusion_beats
+# Import augmentations
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(project_root)
+from src.data_utils.signal_augmenter import augment_beat, synthesize_fusion_beats
 
 # AAMI Mapping
 AAMI_MAPPING = {
@@ -83,8 +84,8 @@ def balance_nv(X, y, rr, seed=42):
     return np.array(X_bal, dtype=np.float32), np.array(y_bal, dtype=np.int64), np.array(rr_bal, dtype=np.float32)
 
 def main():
-    mitdb_dir = r"d:\Users\abrar\Downloads\3-1 Projects\EEE 312\Project\Datasets\mitdb"
-    out_dir = r"d:\Users\abrar\Downloads\3-1 Projects\EEE 312\Project\data"
+    mitdb_dir = os.path.join(project_root, "Datasets", "mitdb")
+    out_dir = os.path.join(project_root, "data")
     os.makedirs(out_dir, exist_ok=True)
     
     records = [f.split('.')[0] for f in os.listdir(mitdb_dir) if f.endswith('.dat')]
