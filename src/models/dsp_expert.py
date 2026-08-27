@@ -102,6 +102,7 @@ class DSPExpert:
         self.ref_sd1 = []
         self.ref_dispersions = []
         self.recent_ratio_areas = []
+        self.rule_counts = {}
 
     def _update_reference(self, features):
         """Adds a normal beat to the sliding reference window."""
@@ -188,6 +189,7 @@ class DSPExpert:
             self._update_reference(features)
             
         features['rule'] = rule
+        self.rule_counts[rule] = self.rule_counts.get(rule, 0) + 1
         return pred, features
 
     def predict(self, X_raw, rr_intervals):

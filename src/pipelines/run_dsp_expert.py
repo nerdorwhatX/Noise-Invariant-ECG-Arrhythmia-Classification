@@ -5,9 +5,9 @@ import time
 import numpy as np
 from sklearn.metrics import accuracy_score, fbeta_score, confusion_matrix, classification_report
 
-# Add src to path so we can import models
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from models.dsp_expert import DSPExpert
+# Add project root to path so we can import models
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from src.models.dsp_expert import DSPExpert
 
 def main():
     print("=" * 60)
@@ -38,29 +38,10 @@ def main():
     start_time = time.time()
     
     # Batch predict
-    print("Starting sequential DSP evaluation...")
+    print("Starting batch DSP evaluation...")
     
-    class_map = {'N': 0, 'S': 1, 'V': 2, 'F': 3}
-    y_pred = []
-    rule_counts = {}
-    
-    # Run loop manually so we can print progress and track triggered rules
-    expert._reset_reference()
-    for i in range(len(X_test)):
-        if i > 0 and i % 5000 == 0:
-            elapsed = time.time() - start_time
-            print(f"  Processed {i}/{len(X_test)} beats ({elapsed:.1f}s elapsed)...")
-            
-        rr_cur = rr_test[i]
-        rr_prev = rr_test[i-1] if i > 0 else rr_cur
-        
-        pred_str, features_out = expert.classify_beat(X_test[i], rr_cur, rr_prev)
-        y_pred.append(class_map[pred_str])
-        
-        rule = features_out.get('rule', 'Unknown')
-        rule_counts[rule] = rule_counts.get(rule, 0) + 1
-        
-    y_pred = np.array(y_pred)
+    y_pred = expert.predict(X_test, rr_test)
+    rule_counts = expert.rule_counts
     total_time = time.time() - start_time
     print(f"Evaluation complete in {total_time:.1f} seconds.")
     

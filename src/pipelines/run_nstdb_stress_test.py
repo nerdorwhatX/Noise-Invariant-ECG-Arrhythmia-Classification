@@ -30,7 +30,8 @@ if __name__ == "__main__":
                 y_true.append(y)
                 rr_all.append(rr)
             except Exception as e:
-                pass
+                print(f"  [Warning] Skipping {record_name}: {e}")
+                continue
                 
         if not X_all:
             print(f"Skipping {snr_num} dB (files not found)")
