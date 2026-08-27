@@ -13,8 +13,7 @@ based on handcrafted thresholds.
 
 import numpy as np
 from scipy.signal import filtfilt, butter
-from scipy.spatial import ConvexHull
-from scipy.spatial.qhull import QhullError
+from scipy.spatial import ConvexHull, QhullError
 
 
 def zero_phase_filter(beat, fs=360):

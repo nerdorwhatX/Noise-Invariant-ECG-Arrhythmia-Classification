@@ -1,17 +1,16 @@
-from src.data_utils.signal_augmenter import augment_beat
 import os
 import sys
 import numpy as np
 import wfdb
 import logging
 
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(project_root)
+
+from src.data_utils.signal_augmenter import augment_beat
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-# Import augmentations
-project_root = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), "..", ".."))
-sys.path.append(project_root)
 
 # AAMI Mapping
 AAMI_MAPPING = {

@@ -25,8 +25,7 @@ import pandas as pd
 import logging
 from scipy.stats import skew, kurtosis
 from scipy.signal import correlate
-from scipy.spatial import ConvexHull
-from scipy.spatial.qhull import QhullError
+from scipy.spatial import ConvexHull, QhullError
 from scipy.interpolate import interp1d
 from joblib import Parallel, delayed
 import warnings
