@@ -34,29 +34,34 @@ if os.path.exists(hybrid_res_path):
 
 # 2. Plot NSTDB Stress Test Comparison
 dsp_nstdb = os.path.join(results_dir, "nstdb_stress_test.json")
+dl_nstdb = os.path.join(results_dir, "nstdb_resnet1d_se_stress_test.json")
 hybrid_nstdb = os.path.join(results_dir, "nstdb_hybrid_lgbm_stress_test.json")
 
-if os.path.exists(dsp_nstdb) and os.path.exists(hybrid_nstdb):
+if os.path.exists(dsp_nstdb) and os.path.exists(hybrid_nstdb) and os.path.exists(dl_nstdb):
     with open(dsp_nstdb, 'r') as f:
         dsp_res = json.load(f)
+    with open(dl_nstdb, 'r') as f:
+        dl_res = json.load(f)
     with open(hybrid_nstdb, 'r') as f:
         hyb_res = json.load(f)
         
     snrs = sorted([int(k) for k in dsp_res.keys()], reverse=True)
     
     dsp_acc = [dsp_res[str(s)]['accuracy'] for s in snrs]
+    dl_acc = [dl_res[str(s)]['accuracy'] for s in snrs]
     hyb_acc = [hyb_res[str(s)]['accuracy'] for s in snrs]
     
     plt.figure(figsize=(10, 6))
-    plt.plot(snrs, dsp_acc, marker='o', linestyle='--', label='DSP Expert')
-    # Let's just plot DSP and Hybrid
-    plt.plot(snrs, hyb_acc, marker='s', linestyle='-', linewidth=2, label='Hybrid ML Ensemble')
+    plt.plot(snrs, dsp_acc, marker='o', linestyle=':', color='gray', label='DSP Expert (Rule-based)')
+    plt.plot(snrs, dl_acc, marker='^', linestyle='--', color='orange', label='ResNet1D-SE (Deep Learning)')
+    plt.plot(snrs, hyb_acc, marker='s', linestyle='-', color='green', linewidth=2.5, label='Hybrid ML Ensemble')
+    
     plt.title('NSTDB Stress Test: Accuracy vs. SNR')
     plt.xlabel('SNR (dB)')
     plt.ylabel('Accuracy')
     plt.gca().invert_xaxis()
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, alpha=0.5)
     plt.tight_layout()
     plt.savefig(os.path.join(summary_fig_dir, "nstdb_comparison.png"), dpi=300)
     plt.savefig(os.path.join(update_fig_dir, "nstdb_comparison.png"), dpi=300)
