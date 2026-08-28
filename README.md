@@ -6,31 +6,28 @@ Heartbeat classification from the MIT-BIH Arrhythmia Database into 4 AAMI classe
 
 ```
 Project/
-├── Datasets/              # Raw MIT-BIH database (gitignored)
-│   ├── mitdb/             # 48-patient PhysioNet records
-│   └── nstdb/             # Noise Stress Test Database
-├── data/                  # Processed arrays (gitignored)
+├── Datasets/              # Raw MIT-BIH & NSTDB databases (gitignored)
+├── data/                  # Processed arrays and extracted features (gitignored)
+├── models_saved/          # Trained model weights (gitignored)
 ├── results/               # Evaluation JSON outputs
 ├── src/
 │   ├── data_preparation/  # ETL, augmentation, feature engineering
-│   │   ├── build_dataset.py
-│   │   ├── feature_engineering.py
-│   │   └── generate_figures.py
-│   ├── models/            # One file per classifier
-│   │   └── dsp_expert.py
-│   └── pipelines/         # Execution & evaluation scripts
-│       └── run_dsp_expert.py
+│   ├── data_utils/        # Utility scripts (e.g., Signal Augmenter)
+│   ├── models/            # One file per classifier (DSP, ResNet1D, LightGBM)
+│   ├── pipelines/         # Execution & evaluation scripts
+│   └── scripts/           # Plot generation and miscellaneous scripts
 ├── SCRATCH_KNOWLEDGE_BASE.md
+├── requirements.txt
 └── .gitignore
 ```
 
-## Models
+## Final Models & Results (DS2 Test Set)
 
-| Model | Type | Weighted F2 | Status |
-|-------|------|-------------|--------|
-| DSP Expert | Rule-based (no ML) | 0.6710 | ✅ Complete |
-| Deep Learning (1D-CNN) | ResNet1D-SE | — | 🔜 Planned |
-| Hybrid ML Ensemble | LightGBM + TDA | — | 🔜 Planned |
+| Model | Type | Accuracy | Weighted F2 | Status |
+|-------|------|----------|-------------|--------|
+| DSP Expert | Rule-based (no ML) | 65.02% | 0.6710 | ✅ Complete |
+| Deep Learning (1D-CNN) | ResNet1D-SE | 75.72% | 0.7713 | ✅ Complete |
+| Hybrid ML Ensemble | LightGBM + TDA | **92.35%** | **0.9209** | ✅ Complete |
 
 ## Quick Start
 
@@ -44,9 +41,23 @@ python src/data_preparation/build_dataset.py
 python src/data_preparation/feature_engineering.py
 ```
 
-### 3. Run the DSP Expert Evaluation
+### 3. Run Pipeline Evaluations
 ```bash
+# Run DSP Expert
 python src/pipelines/run_dsp_expert.py
+
+# Train & Run Deep Learning Baseline
+python src/pipelines/run_resnet1d_se.py
+
+# Train & Run Hybrid ML Ensemble
+python src/pipelines/run_hybrid_lgbm.py
+```
+
+### 4. Run NSTDB Stress Tests
+```bash
+python src/pipelines/run_nstdb_stress_test.py
+python src/pipelines/run_nstdb_resnet1d_se.py
+python src/pipelines/run_nstdb_hybrid_lgbm.py
 ```
 
 ## Evaluation Protocol
