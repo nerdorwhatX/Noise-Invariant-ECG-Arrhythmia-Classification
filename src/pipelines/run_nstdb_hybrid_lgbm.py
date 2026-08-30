@@ -12,27 +12,31 @@ from src.models.hybrid_lgbm import HybridLGBMClassifier
 from src.data_preparation.build_dataset import extract_raw_beats
 from src.data_preparation.feature_engineering import extract_all
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     model_path = os.path.join(project_root, "models_saved", "hybrid_lgbm.pkl")
     if not os.path.exists(model_path):
-        logger.error(f"Trained model not found at {model_path}. Run run_hybrid_lgbm.py first.")
+        logger.error(
+            f"Trained model not found at {model_path}. Run run_hybrid_lgbm.py first."
+        )
         sys.exit(1)
-        
+
     logger.info("Loading trained Hybrid LGBM model...")
     model = HybridLGBMClassifier()
     model.load(model_path)
-    
+
     nstdb_dir = os.path.join(project_root, "Datasets", "nstdb")
-    snr_levels = ['24', '18', '12', '06', '00', '_6']
+    snr_levels = ["24", "18", "12", "06", "00", "_6"]
     snr_numeric = [24, 18, 12, 6, 0, -6]
-    records = ['118', '119']
+    records = ["118", "119"]
 
     results = {}
     logger.info("Starting NSTDB Stress Test for Hybrid LGBM...")
-    
+
     for snr, snr_num in zip(snr_levels, snr_numeric):
         logger.info(f"\nEvaluating SNR: {snr_num} dB")
         X_all, y_true, rr_all = [], [], []
@@ -57,23 +61,29 @@ if __name__ == "__main__":
         y_true = np.concatenate(y_true)
         rr_all = np.concatenate(rr_all)
 
-        logger.info(f"Extracting TDA and DSP features for {len(X_all)} noisy beats on the fly...")
+        logger.info(
+            f"Extracting TDA and DSP features for {len(X_all)} noisy beats on the fly..."
+        )
         X_features = extract_all(X_all, y_true, rr_all, include_tda=True, n_jobs=4)
-        
+
         y_pred = model.predict(X_features)
 
         acc = accuracy_score(y_true, y_pred)
-        f2 = fbeta_score(y_true, y_pred, beta=2.0, average='weighted', zero_division=0)
+        f2 = fbeta_score(y_true, y_pred, beta=2.0, average="weighted", zero_division=0)
 
         results[str(snr_num)] = {
             "accuracy": float(acc),
             "weighted_f2": float(f2),
-            "total_beats": len(y_true)
+            "total_beats": len(y_true),
         }
 
-        logger.info(f"SNR {snr_num}dB -> Accuracy: {acc:.4f} | Weighted F2: {f2:.4f} ({len(y_true)} beats)")
+        logger.info(
+            f"SNR {snr_num}dB -> Accuracy: {acc:.4f} | Weighted F2: {f2:.4f} ({len(y_true)} beats)"
+        )
 
-    results_path = os.path.join(project_root, "results", "nstdb_hybrid_lgbm_stress_test.json")
-    with open(results_path, 'w') as f:
+    results_path = os.path.join(
+        project_root, "results", "nstdb_hybrid_lgbm_stress_test.json"
+    )
+    with open(results_path, "w") as f:
         json.dump(results, f, indent=4)
     logger.info(f"\nResults saved to {results_path}")

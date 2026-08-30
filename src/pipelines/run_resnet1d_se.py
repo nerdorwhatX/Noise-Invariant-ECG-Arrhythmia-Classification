@@ -4,7 +4,12 @@ import numpy as np
 import json
 import logging
 import time
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, fbeta_score
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    classification_report,
+    fbeta_score,
+)
 
 # Ensure the root directory is accessible for imports
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -12,12 +17,15 @@ sys.path.append(project_root)
 
 from src.models.resnet1d_se import ResNet1DClassifier
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
+
 
 def main():
     logger.info("Starting ResNet1D-SE (Pure DL Baseline) Training and Evaluation...")
-    
+
     # 1. Load Datasets
     logger.info("Loading training dataset (DS1) and testing dataset (DS2)...")
     ds1_path = os.path.join(project_root, "data", "DS1_X_raw.npy")
@@ -38,10 +46,10 @@ def main():
 
     # 2. Initialize and Train Model
     model = ResNet1DClassifier(epochs=100, batch_size=256, lr=0.001)
-    
+
     start_time = time.time()
     logger.info("Training ResNet1D-SE (This may take a while)...")
-    model.fit(X_train, y_train, class_weights='balanced')
+    model.fit(X_train, y_train, class_weights="balanced")
     training_time = time.time() - start_time
     logger.info(f"Training completed in {training_time:.2f} seconds.")
 
@@ -58,7 +66,7 @@ def main():
 
     # 4. Metrics
     accuracy = accuracy_score(y_test, predictions)
-    weighted_f2 = fbeta_score(y_test, predictions, beta=2, average='weighted')
+    weighted_f2 = fbeta_score(y_test, predictions, beta=2, average="weighted")
     cm = confusion_matrix(y_test, predictions)
     report = classification_report(y_test, predictions, output_dict=True)
 
@@ -76,17 +84,18 @@ def main():
         "confusion_matrix": cm.tolist(),
         "classification_report": report,
         "training_time_seconds": training_time,
-        "execution_time_seconds": eval_time
+        "execution_time_seconds": eval_time,
     }
 
     results_dir = os.path.join(project_root, "results")
     os.makedirs(results_dir, exist_ok=True)
     results_path = os.path.join(results_dir, "resnet1d_se_results.json")
-    
-    with open(results_path, 'w') as f:
+
+    with open(results_path, "w") as f:
         json.dump(results, f, indent=4)
-    
+
     logger.info(f"Results saved to {results_path}")
+
 
 if __name__ == "__main__":
     main()

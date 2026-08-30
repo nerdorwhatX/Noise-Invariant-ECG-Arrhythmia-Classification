@@ -1,16 +1,14 @@
-"""
-signal_augmenter.py — Signal-level data augmentation for ECG beat balancing.
+# signal_augmenter.py
+# This script adds small random changes (like time shifts and noise) to the ECG beats.
+# We use this to generate more data for the rare heartbeat classes so our model trains better.
 
-Applies realistic waveform transforms (time shift, amplitude scaling, time warping)
-to minority-class beats to create balanced training data. Augmentation happens on
-raw waveforms BEFORE feature extraction, ensuring all derived features are
-physically valid.
-"""
 import numpy as np
 from scipy.interpolate import interp1d
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -36,20 +34,21 @@ def time_warp(beat, low=0.85, high=1.15):
     n_knots = 5
     knot_positions = np.linspace(0, n - 1, n_knots)
     knot_warps = np.random.uniform(low, high, n_knots)
-    knot_warps[0] = 1.0   # anchor start
+    knot_warps[0] = 1.0  # anchor start
     knot_warps[-1] = 1.0  # anchor end
 
     # Build cumulative warp
-    warp_fn = interp1d(knot_positions, knot_warps,
-                       kind='linear', fill_value='extrapolate')
+    warp_fn = interp1d(
+        knot_positions, knot_warps, kind="linear", fill_value="extrapolate"
+    )
     warp_factors = warp_fn(np.arange(n))
     warped_indices = np.cumsum(warp_factors)
-    warped_indices = warped_indices / \
-        warped_indices[-1] * (n - 1)  # normalize to [0, n-1]
+    warped_indices = (
+        warped_indices / warped_indices[-1] * (n - 1)
+    )  # normalize to [0, n-1]
 
     # Resample
-    original_fn = interp1d(
-        np.arange(n), beat, kind='cubic', fill_value='extrapolate')
+    original_fn = interp1d(np.arange(n), beat, kind="cubic", fill_value="extrapolate")
     return original_fn(warped_indices).astype(np.float32)
 
 
@@ -80,11 +79,7 @@ def augment_beat(beat, rr_current, rr_prev, rr_next):
 
 
 def balance_dataset(X, y, rr, rec=None, target_ratio=1.0, seed=42):
-    """
-    Balance the dataset by augmenting minority classes via signal-level transforms.
-    Optimized for low-memory environments by pre-allocating numpy arrays.
-    """
-    rng = np.random.RandomState(seed)
+    # Balances the dataset by making copies of the rare beats with slight variations.
     np.random.seed(seed)
 
     classes, counts = np.unique(y, return_counts=True)
@@ -95,8 +90,7 @@ def balance_dataset(X, y, rr, rec=None, target_ratio=1.0, seed=42):
     X_bal = np.empty((total_size, X.shape[1]), dtype=np.float32)
     y_bal = np.empty(total_size, dtype=np.int64)
     rr_bal = np.empty(total_size, dtype=np.float32)
-    rec_bal = np.empty(
-        total_size, dtype=rec.dtype) if rec is not None else None
+    rec_bal = np.empty(total_size, dtype=rec.dtype) if rec is not None else None
 
     # Copy original data
     orig_size = len(X)
@@ -137,12 +131,8 @@ def balance_dataset(X, y, rr, rec=None, target_ratio=1.0, seed=42):
 
 
 def synthesize_fusion_beats(X, y, rr, rec, num_fusion_beats, seed=42):
-    """
-    Synthesize physical Fusion (F) beats by simulating the electrophysiological 
-    collision of a sinus (N) wavefront and a ventricular (V) wavefront.
-    This creates physically valid F-beats by interpolating N and V beats 
-    from the *same patient* in the time domain.
-    """
+    # Creates fake 'Fusion' beats by mathematically mixing a Normal beat and a Ventricular beat
+    # from the exact same patient to keep it realistic.
     rng = np.random.RandomState(seed)
 
     synth_beats = []
@@ -188,5 +178,5 @@ def synthesize_fusion_beats(X, y, rr, rec, num_fusion_beats, seed=42):
         np.vstack([X, np.array(synth_beats, dtype=np.float32)]),
         np.concatenate([y, np.array(synth_labels, dtype=np.int64)]),
         np.concatenate([rr, np.array(synth_rrs, dtype=np.float32)]),
-        np.concatenate([rec, np.array(synth_recs, dtype=rec.dtype)])
+        np.concatenate([rec, np.array(synth_recs, dtype=rec.dtype)]),
     )

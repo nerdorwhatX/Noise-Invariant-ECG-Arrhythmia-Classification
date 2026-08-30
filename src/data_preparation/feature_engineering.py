@@ -1,23 +1,7 @@
-"""
-feature_engineering.py — Extracts ~89 mathematically derived features per beat.
-
-Produces a tabular (Parquet) dataset from raw time-series waveforms.
-Feature groups:
-  1. Multi-Tau Phase-Space Geometry (τ=4,8,16):   24 features
-  2. RR-Context Window (10-beat surrounding):       8 features
-  3. Regional Morphology (P/QRS/T):                12 features
-  4. Statistical Moments:                           8 features
-  5. Template Correlation:                          4 features
-  6. Wavelet Energy (4-level DWT):                  8 features
-  7. Autocorrelation:                               4 features
-  8. Takens' Phase-Space Excursion:                  1 feature
-  9. TDA (Persistent Homology H0+H1):              20 features
-  ─────────────────────────────────────────────────────
-  Total:                                           ~89 features
-
-Usage:
-    python feature_engineering.py
-"""
+# feature_engineering.py
+# This script takes the raw heartbeat arrays and calculates all our DSP features.
+# It computes about 89 features total (Wavelet energy, Phase space, TDA, etc.)
+# so we can feed them into the ML models instead of raw data.
 import os
 import sys
 import numpy as np
@@ -26,19 +10,20 @@ import logging
 from scipy.stats import skew, kurtosis
 from scipy.signal import correlate
 from scipy.spatial import ConvexHull, QhullError
-from scipy.interpolate import interp1d
+
 from joblib import Parallel, delayed
 import warnings
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 FS = 360  # MIT-BIH sampling frequency
-project_root = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), "..", ".."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DATA_DIR = os.path.join(project_root, "data")
 
 
@@ -46,8 +31,9 @@ DATA_DIR = os.path.join(project_root, "data")
 # 1. Phase-Space Geometric Features (from DSP-Expert / david_pipeline.py)
 # ============================================================================
 
+
 def _extract_geometric_features(beat, tau=8):
-    """Takens embedding → convex hull + PCA ellipse + angular dispersion."""
+    # Calculates area, perimeter, and shape of the phase-space embedding
     if len(beat) <= tau + 2:
         return [0.0] * 8
 
@@ -95,8 +81,9 @@ def phase_space_features(beat, taus=(4, 8, 16)):
 # 2. RR-Context Window
 # ============================================================================
 
+
 def rr_context_features(rr_current, rr_prev, rr_next, rr_window):
-    """8 features from the surrounding RR-interval context."""
+    # Get 8 features from the RR interval (heart rate timing)
     rr_mean = np.mean(rr_window) if len(rr_window) > 0 else rr_current
     rr_std = np.std(rr_window) if len(rr_window) > 1 else 0.0
 
@@ -107,19 +94,28 @@ def rr_context_features(rr_current, rr_prev, rr_next, rr_window):
     is_shortest = 1.0 if rr_current <= np.min(rr_window) else 0.0
     is_longest = 1.0 if rr_current >= np.max(rr_window) else 0.0
 
-    return np.array([
-        rr_current, prematurity, compensatory,
-        rr_ratio_prev, rr_ratio_next,
-        rr_std, is_shortest, is_longest
-    ], dtype=np.float32)
+    return np.array(
+        [
+            rr_current,
+            prematurity,
+            compensatory,
+            rr_ratio_prev,
+            rr_ratio_next,
+            rr_std,
+            is_shortest,
+            is_longest,
+        ],
+        dtype=np.float32,
+    )
 
 
 # ============================================================================
 # 3. Regional Morphology (P-wave, QRS, T-wave)
 # ============================================================================
 
+
 def regional_features(beat, fs=FS):
-    """12 features: energy/peak/p2p for P, QRS, T regions + 3 ratios."""
+    # Splits the beat into P-wave, QRS, and T-wave parts and gets their energy
     center = len(beat) // 2
 
     p_start = max(0, center - int(0.25 * fs))
@@ -128,15 +124,18 @@ def regional_features(beat, fs=FS):
 
     qrs_start = max(0, center - int(0.05 * fs))
     qrs_end = min(len(beat), center + int(0.05 * fs))
-    qrs_region = beat[qrs_start:qrs_end] if qrs_end > qrs_start else np.zeros(
-        1)
+    qrs_region = beat[qrs_start:qrs_end] if qrs_end > qrs_start else np.zeros(1)
 
     t_start = min(len(beat), center + int(0.10 * fs))
     t_end = min(len(beat), center + int(0.30 * fs))
     t_region = beat[t_start:t_end] if t_end > t_start else np.zeros(1)
 
     def region_stats(region):
-        return np.sum(region**2), np.max(np.abs(region)), np.max(region) - np.min(region)
+        return (
+            np.sum(region**2),
+            np.max(np.abs(region)),
+            np.max(region) - np.min(region),
+        )
 
     p_e, p_pk, p_p2p = region_stats(p_region)
     qrs_e, qrs_pk, qrs_p2p = region_stats(qrs_region)
@@ -144,22 +143,32 @@ def regional_features(beat, fs=FS):
 
     total_e = np.sum(beat**2) + 1e-8
 
-    return np.array([
-        p_e, p_pk, p_p2p,
-        qrs_e, qrs_pk, qrs_p2p,
-        t_e, t_pk, t_p2p,
-        qrs_e / (p_e + 1e-8),
-        qrs_e / (t_e + 1e-8),
-        qrs_e / total_e
-    ], dtype=np.float32)
+    return np.array(
+        [
+            p_e,
+            p_pk,
+            p_p2p,
+            qrs_e,
+            qrs_pk,
+            qrs_p2p,
+            t_e,
+            t_pk,
+            t_p2p,
+            qrs_e / (p_e + 1e-8),
+            qrs_e / (t_e + 1e-8),
+            qrs_e / total_e,
+        ],
+        dtype=np.float32,
+    )
 
 
 # ============================================================================
 # 4. Statistical Moments
 # ============================================================================
 
+
 def stat_features(beat):
-    """8 features: mean, std, skew, kurtosis, p2p, energy, zero-crossings, form factor."""
+    # Just some basic stats: mean, std, zero crossings, etc.
     b_mean = np.mean(beat)
     b_std = np.std(beat) + 1e-8
     b_skew = skew(beat)
@@ -169,12 +178,15 @@ def stat_features(beat):
     zc = np.sum(np.diff(np.sign(beat)) != 0)
     form_factor = np.std(np.diff(beat)) / b_std
 
-    return np.array([b_mean, b_std, b_skew, b_kurt, p2p, energy, zc, form_factor], dtype=np.float32)
+    return np.array(
+        [b_mean, b_std, b_skew, b_kurt, p2p, energy, zc, form_factor], dtype=np.float32
+    )
 
 
 # ============================================================================
 # 5. Template Correlation
 # ============================================================================
+
 
 def build_templates(X, y, num_classes=4):
     """Build per-class average beat templates from training data."""
@@ -203,20 +215,28 @@ def template_correlation(beat, templates):
 # 6. Wavelet Energy
 # ============================================================================
 
-def wavelet_features(beat, wavelet='db4', level=4):
-    """8 features: normalized DWT energies + ratios + entropy."""
+
+def wavelet_features(beat, wavelet="db4", level=4):
+    # DWT using db4 wavelet. Gets energy from each frequency band.
     try:
         import pywt
+
         coeffs = pywt.wavedec(np.array(beat), wavelet, level=level)
         energies = [np.sum(c**2) for c in coeffs]
         total = sum(energies) + 1e-8
         norm_e = [e / total for e in energies]
         approx_detail = energies[0] / (sum(energies[1:]) + 1e-8)
-        high_low = (energies[1] + energies[2]) / (energies[3] +
-                                                  energies[4] + 1e-8) if len(energies) >= 5 else 0.0
-        detail_entropy = - \
-            np.sum([e/total * np.log2(e/total + 1e-12) for e in energies[1:]])
-        return np.array(norm_e + [approx_detail, high_low, detail_entropy], dtype=np.float32)
+        high_low = (
+            (energies[1] + energies[2]) / (energies[3] + energies[4] + 1e-8)
+            if len(energies) >= 5
+            else 0.0
+        )
+        detail_entropy = -np.sum(
+            [e / total * np.log2(e / total + 1e-12) for e in energies[1:]]
+        )
+        return np.array(
+            norm_e + [approx_detail, high_low, detail_entropy], dtype=np.float32
+        )
     except ImportError:
         return np.zeros(8, dtype=np.float32)
 
@@ -225,11 +245,12 @@ def wavelet_features(beat, wavelet='db4', level=4):
 # 7. Autocorrelation
 # ============================================================================
 
+
 def autocorr_features(beat):
-    """4 features: lag-1, zero-crossing, half-life, secondary peak."""
+    # Autocorrelation to check for repeating patterns in the beat
     beat_centered = beat - np.mean(beat)
-    ac = correlate(beat_centered, beat_centered, mode='full')
-    ac = ac[len(ac) // 2:]
+    ac = correlate(beat_centered, beat_centered, mode="full")
+    ac = ac[len(ac) // 2 :]
     ac_norm = ac / (ac[0] + 1e-8)
 
     ac_lag1 = ac_norm[1] if len(ac_norm) > 1 else 0.0
@@ -248,23 +269,25 @@ def autocorr_features(beat):
 
     secondary_peak = np.max(ac_norm[5:]) if len(ac_norm) > 10 else 0.0
 
-    return np.array([
-        ac_lag1, zero_cross / len(beat), half_life / len(beat), secondary_peak
-    ], dtype=np.float32)
+    return np.array(
+        [ac_lag1, zero_cross / len(beat), half_life / len(beat), secondary_peak],
+        dtype=np.float32,
+    )
 
 
 # ============================================================================
 # 8. Takens' Phase-Space Excursion
 # ============================================================================
 
+
 def takens_excursion(i, rr, window=10):
     """1 feature: Euclidean distance of 3D RR embedding from local centroid."""
     if i < 2:
         return 0.0
-    v_i = np.array([rr[i], rr[i-1], rr[i-2]])
+    v_i = np.array([rr[i], rr[i - 1], rr[i - 2]])
     embeddings = []
     for j in range(max(2, i - window), i):
-        embeddings.append([rr[j], rr[j-1], rr[j-2]])
+        embeddings.append([rr[j], rr[j - 1], rr[j - 2]])
     if not embeddings:
         return 0.0
     centroid = np.mean(embeddings, axis=0)
@@ -274,6 +297,7 @@ def takens_excursion(i, rr, window=10):
 # ============================================================================
 # 9. TDA (Persistent Homology) — optional, requires ripser
 # ============================================================================
+
 
 def tda_features(beat, tau=8):
     """20 features: H0 (5) + H1 (9) + Cross (6) from persistence diagrams."""
@@ -291,26 +315,32 @@ def tda_features(beat, tau=8):
         pc = pc[idx]
 
     result = ripser(pc, maxdim=1, thresh=np.inf)
-    dgms = result['dgms']
+    dgms = result["dgms"]
 
     h0 = dgms[0] if len(dgms) > 0 else np.array([]).reshape(0, 2)
     h1 = dgms[1] if len(dgms) > 1 else np.array([]).reshape(0, 2)
 
     def _stats(dgm):
-        finite = dgm[np.isfinite(dgm[:, 1])] if len(
-            dgm) > 0 else np.array([]).reshape(0, 2)
+        finite = (
+            dgm[np.isfinite(dgm[:, 1])] if len(dgm) > 0 else np.array([]).reshape(0, 2)
+        )
         if len(finite) == 0:
-            return [0]*9
+            return [0] * 9
         lifetimes = np.maximum(finite[:, 1] - finite[:, 0], 0)
         total = np.sum(lifetimes) + 1e-12
         probs = lifetimes / total
         entropy = -np.sum(probs * np.log2(probs + 1e-12))
         midlife = np.mean((finite[:, 0] + finite[:, 1]) / 2.0)
         return [
-            len(finite), float(np.max(lifetimes)), float(np.mean(lifetimes)),
-            float(np.std(lifetimes)), float(total), float(entropy),
-            float(np.max(finite[:, 0])), float(
-                np.max(finite[:, 1])), float(midlife)
+            len(finite),
+            float(np.max(lifetimes)),
+            float(np.mean(lifetimes)),
+            float(np.std(lifetimes)),
+            float(total),
+            float(entropy),
+            float(np.max(finite[:, 0])),
+            float(np.max(finite[:, 1])),
+            float(midlife),
         ]
 
     s0 = _stats(h0)
@@ -326,15 +356,20 @@ def tda_features(beat, tau=8):
     entropy_ratio = s1[5] / (s0[5] + 1e-8) if len(s0) > 5 else 0.0
     total_features = s0[0] + s1[0]
     dominant = max(s0[1], s1[1])
-    h1_finite = h1[np.isfinite(h1[:, 1])] if len(
-        h1) > 0 else np.array([]).reshape(0, 2)
+    h1_finite = h1[np.isfinite(h1[:, 1])] if len(h1) > 0 else np.array([]).reshape(0, 2)
     if len(h1_finite) > 1:
         lt = h1_finite[:, 1] - h1_finite[:, 0]
         persist_range = float(np.max(lt) - np.min(lt))
     else:
         persist_range = 0.0
-    f_cross = [h1_h0_persist, h1_h0_count, entropy_ratio,
-               total_features, dominant, persist_range]
+    f_cross = [
+        h1_h0_persist,
+        h1_h0_count,
+        entropy_ratio,
+        total_features,
+        dominant,
+        persist_range,
+    ]
 
     return np.array(f_h0 + f_h1 + f_cross, dtype=np.float32)
 
@@ -342,6 +377,7 @@ def tda_features(beat, tau=8):
 # ============================================================================
 # Master Feature Extraction
 # ============================================================================
+
 
 def extract_single_beat(i, X, rr, templates, include_tda=True):
     """Extract all features for beat i."""
@@ -357,19 +393,19 @@ def extract_single_beat(i, X, rr, templates, include_tda=True):
     w_end = min(n, i + half_w + 1)
     rr_window = rr[w_start:w_end]
 
-    f1 = phase_space_features(beat)                               # 24
+    f1 = phase_space_features(beat)  # 24
     f2 = rr_context_features(rr_cur, rr_prev, rr_next, rr_window)  # 8
-    f3 = regional_features(beat)                                  # 12
-    f4 = stat_features(beat)                                      # 8
-    f5 = template_correlation(beat, templates)                    # 4
-    f6 = wavelet_features(beat)                                   # 8
-    f7 = autocorr_features(beat)                                  # 4
+    f3 = regional_features(beat)  # 12
+    f4 = stat_features(beat)  # 8
+    f5 = template_correlation(beat, templates)  # 4
+    f6 = wavelet_features(beat)  # 8
+    f7 = autocorr_features(beat)  # 4
     f_takens = np.array([takens_excursion(i, rr)], dtype=np.float32)  # 1
 
     parts = [f1, f2, f3, f4, f5, f6, f7, f_takens]
 
     if include_tda:
-        f8 = tda_features(beat, tau=8)                            # 20
+        f8 = tda_features(beat, tau=8)  # 20
         parts.append(f8)
 
     return np.concatenate(parts)
@@ -381,7 +417,9 @@ def extract_all(X, y, rr, include_tda=True, n_jobs=4):
 
     tda_str = "+TDA" if include_tda else ""
     n_feat = "~89" if include_tda else "~69"
-    logger.info(f"Extracting {len(X)} beats × {n_feat} DSP{tda_str} features using {n_jobs} cores...")
+    logger.info(
+        f"Extracting {len(X)} beats × {n_feat} DSP{tda_str} features using {n_jobs} cores..."
+    )
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -407,6 +445,7 @@ def main():
     # Check for ripser
     try:
         import ripser
+
         include_tda = True
         logger.info("ripser found — TDA features ENABLED")
     except ImportError:
@@ -433,7 +472,7 @@ def main():
         # Save as Parquet
         out_path = os.path.join(DATA_DIR, f"{split}_features.parquet")
         df = pd.DataFrame(features)
-        df['label'] = y
+        df["label"] = y
         df.to_parquet(out_path, index=False)
         logger.info(f"Saved: {out_path} ({df.shape[0]} rows × {df.shape[1]} cols)")
 
