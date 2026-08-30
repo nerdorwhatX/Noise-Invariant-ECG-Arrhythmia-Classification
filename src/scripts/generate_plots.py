@@ -115,80 +115,66 @@ if (
     dl_f2 = [dl_res[str(s)]["weighted_f2"] for s in snrs]
     hyb_f2 = [hyb_res[str(s)]["weighted_f2"] for s in snrs]
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(
-        snrs,
-        dsp_acc,
-        marker="o",
-        linestyle=":",
-        color="gray",
-        label="DSP Expert (Rule-based)",
-    )
-    plt.plot(
-        snrs,
-        dl_acc,
-        marker="^",
-        linestyle="--",
-        color="orange",
-        label="ResNet1D-SE (Deep Learning)",
-    )
-    plt.plot(
-        snrs,
-        hyb_acc,
-        marker="s",
-        linestyle="-",
-        color="green",
-        linewidth=2.5,
-        label="Hybrid ML Ensemble",
-    )
+    # Balanced metrics
+    dsp_bal_acc = [dsp_res[str(s)].get("balanced_accuracy", 0) for s in snrs]
+    dl_bal_acc = [dl_res[str(s)].get("balanced_accuracy", 0) for s in snrs]
+    hyb_bal_acc = [hyb_res[str(s)].get("balanced_accuracy", 0) for s in snrs]
 
-    plt.title("NSTDB Stress Test: Accuracy vs. SNR")
-    plt.xlabel("SNR (dB)")
-    plt.ylabel("Accuracy")
-    plt.gca().invert_xaxis()
-    plt.legend()
-    plt.grid(True, alpha=0.5)
+    dsp_macro_f2 = [dsp_res[str(s)].get("macro_f2", 0) for s in snrs]
+    dl_macro_f2 = [dl_res[str(s)].get("macro_f2", 0) for s in snrs]
+    hyb_macro_f2 = [hyb_res[str(s)].get("macro_f2", 0) for s in snrs]
+
+    # Helper to plot a single metric
+    def plot_metric(ax, dsp_vals, dl_vals, hyb_vals, title, ylabel):
+        ax.plot(snrs, dsp_vals, marker="o", linestyle=":", color="gray", label="DSP Expert")
+        ax.plot(snrs, dl_vals, marker="^", linestyle="--", color="orange", label="ResNet1D-SE")
+        ax.plot(snrs, hyb_vals, marker="s", linestyle="-", color="green", linewidth=2.5, label="Hybrid Ensemble")
+        ax.set_title(title, fontsize=12, fontweight="bold")
+        ax.set_xlabel("SNR (dB)")
+        ax.set_ylabel(ylabel)
+        ax.invert_xaxis()
+        ax.legend(fontsize=8)
+        ax.grid(True, alpha=0.5)
+
+    # 2x2 combined figure
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    plot_metric(axes[0, 0], dsp_acc, dl_acc, hyb_acc, "Accuracy vs. SNR", "Accuracy")
+    plot_metric(axes[0, 1], dsp_bal_acc, dl_bal_acc, hyb_bal_acc, "Balanced Accuracy vs. SNR", "Balanced Accuracy")
+    plot_metric(axes[1, 0], dsp_f2, dl_f2, hyb_f2, "Weighted F2 Score vs. SNR", "Weighted F2")
+    plot_metric(axes[1, 1], dsp_macro_f2, dl_macro_f2, hyb_macro_f2, "Macro F2 Score vs. SNR", "Macro F2")
+    fig.suptitle("NSTDB Stress Test: Model Performance Under Noise", fontsize=16, fontweight="bold")
+    plt.tight_layout()
+    plt.savefig(os.path.join(summary_fig_dir, "nstdb_4panel.png"), dpi=300, bbox_inches="tight")
+    plt.savefig(os.path.join(update_fig_dir, "nstdb_4panel.png"), dpi=300, bbox_inches="tight")
+    plt.close()
+
+    # Individual plots for LaTeX (kept for backwards compatibility)
+    plt.figure(figsize=(10, 6))
+    plot_metric(plt.gca(), dsp_acc, dl_acc, hyb_acc, "NSTDB Stress Test: Accuracy vs. SNR", "Accuracy")
     plt.tight_layout()
     plt.savefig(os.path.join(summary_fig_dir, "nstdb_comparison.png"), dpi=300)
     plt.savefig(os.path.join(update_fig_dir, "nstdb_comparison.png"), dpi=300)
     plt.close()
 
     plt.figure(figsize=(10, 6))
-    plt.plot(
-        snrs,
-        dsp_f2,
-        marker="o",
-        linestyle=":",
-        color="gray",
-        label="DSP Expert (Rule-based)",
-    )
-    plt.plot(
-        snrs,
-        dl_f2,
-        marker="^",
-        linestyle="--",
-        color="orange",
-        label="ResNet1D-SE (Deep Learning)",
-    )
-    plt.plot(
-        snrs,
-        hyb_f2,
-        marker="s",
-        linestyle="-",
-        color="green",
-        linewidth=2.5,
-        label="Hybrid ML Ensemble",
-    )
+    plot_metric(plt.gca(), dsp_bal_acc, dl_bal_acc, hyb_bal_acc, "NSTDB Stress Test: Balanced Accuracy vs. SNR", "Balanced Accuracy")
+    plt.tight_layout()
+    plt.savefig(os.path.join(summary_fig_dir, "nstdb_balanced_acc.png"), dpi=300)
+    plt.savefig(os.path.join(update_fig_dir, "nstdb_balanced_acc.png"), dpi=300)
+    plt.close()
 
-    plt.title("NSTDB Stress Test: Weighted F2 Score vs. SNR")
-    plt.xlabel("SNR (dB)")
-    plt.ylabel("Weighted F2 Score")
-    plt.gca().invert_xaxis()
-    plt.legend()
-    plt.grid(True, alpha=0.5)
+    plt.figure(figsize=(10, 6))
+    plot_metric(plt.gca(), dsp_f2, dl_f2, hyb_f2, "NSTDB Stress Test: Weighted F2 Score vs. SNR", "Weighted F2 Score")
     plt.tight_layout()
     plt.savefig(os.path.join(summary_fig_dir, "nstdb_f2_comparison.png"), dpi=300)
     plt.savefig(os.path.join(update_fig_dir, "nstdb_f2_comparison.png"), dpi=300)
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    plot_metric(plt.gca(), dsp_macro_f2, dl_macro_f2, hyb_macro_f2, "NSTDB Stress Test: Macro F2 Score vs. SNR", "Macro F2 Score")
+    plt.tight_layout()
+    plt.savefig(os.path.join(summary_fig_dir, "nstdb_macro_f2.png"), dpi=300)
+    plt.savefig(os.path.join(update_fig_dir, "nstdb_macro_f2.png"), dpi=300)
     plt.close()
 
 # 3. Plot LightGBM Feature Importance

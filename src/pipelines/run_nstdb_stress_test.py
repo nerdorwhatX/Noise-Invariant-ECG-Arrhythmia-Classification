@@ -3,7 +3,7 @@ import sys
 import json
 import numpy as np
 import logging
-from sklearn.metrics import accuracy_score, fbeta_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, fbeta_score
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
@@ -53,16 +53,20 @@ if __name__ == "__main__":
         y_pred = expert.predict(X_all, rr_all)
 
         acc = accuracy_score(y_true, y_pred)
+        bal_acc = balanced_accuracy_score(y_true, y_pred)
         f2 = fbeta_score(y_true, y_pred, beta=2.0, average="weighted", zero_division=0)
+        bal_f2 = fbeta_score(y_true, y_pred, beta=2.0, average="macro", zero_division=0)
 
         results[str(snr_num)] = {
             "accuracy": float(acc),
+            "balanced_accuracy": float(bal_acc),
             "weighted_f2": float(f2),
+            "macro_f2": float(bal_f2),
             "total_beats": len(y_true),
         }
 
         logger.info(
-            f"SNR {snr_num}dB -> Accuracy: {acc:.4f} | Weighted F2: {f2:.4f} ({len(y_true)} beats)"
+            f"SNR {snr_num}dB -> Acc: {acc:.4f} | Bal Acc: {bal_acc:.4f} | W-F2: {f2:.4f} | M-F2: {bal_f2:.4f} ({len(y_true)} beats)"
         )
 
     results_path = os.path.join(project_root, "results", "nstdb_stress_test.json")

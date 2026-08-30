@@ -1,32 +1,44 @@
 {
     "24": {
         "accuracy": 0.698732989206945,
+        "balanced_accuracy": 0.29514574876619976,
         "weighted_f2": 0.726401248871132,
+        "macro_f2": 0.3117960768370689,
         "total_beats": 4262
     },
     "18": {
         "accuracy": 0.7062412013139371,
+        "balanced_accuracy": 0.2935811101464918,
         "weighted_f2": 0.732346506672783,
+        "macro_f2": 0.23156440264635678,
         "total_beats": 4262
     },
     "12": {
         "accuracy": 0.7196152041295166,
+        "balanced_accuracy": 0.3065330636309836,
         "weighted_f2": 0.7443186977281031,
+        "macro_f2": 0.23981973241655358,
         "total_beats": 4262
     },
     "6": {
         "accuracy": 0.5947911778507743,
+        "balanced_accuracy": 0.32890010910626716,
         "weighted_f2": 0.6338208852468982,
+        "macro_f2": 0.2444943512053421,
         "total_beats": 4262
     },
     "0": {
         "accuracy": 0.4310183012670108,
+        "balanced_accuracy": 0.35303899082568807,
         "weighted_f2": 0.46330813571573093,
+        "macro_f2": 0.2140993423162333,
         "total_beats": 4262
     },
     "-6": {
         "accuracy": 0.3951196621304552,
+        "balanced_accuracy": 0.31540102744993753,
         "weighted_f2": 0.422310702774824,
+        "macro_f2": 0.2573306061004296,
         "total_beats": 4262
     }
 }
