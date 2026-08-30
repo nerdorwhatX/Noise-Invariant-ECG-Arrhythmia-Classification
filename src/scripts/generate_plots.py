@@ -216,5 +216,58 @@ if os.path.exists(model_path):
     plt.savefig(os.path.join(summary_fig_dir, "feature_importance.png"), dpi=300)
     plt.savefig(os.path.join(update_fig_dir, "feature_importance.png"), dpi=300)
     plt.close()
+# 4. Plot Class Imbalance Before/After Balancing
+data_dir = os.path.join(project_root, "data")
+ds1_y_path = os.path.join(data_dir, "DS1_y.npy")
+ds2_y_path = os.path.join(data_dir, "DS2_y.npy")
+
+if os.path.exists(ds1_y_path) and os.path.exists(ds2_y_path):
+    y_ds1 = np.load(ds1_y_path)
+    y_ds2 = np.load(ds2_y_path)
+
+    class_names = ["N", "S", "V", "F"]
+
+    # DS1 is already balanced (V augmented to match N). We can figure out the
+    # original counts: N count stayed the same, S and F stayed the same,
+    # V was augmented UP to match N.  So the "before" V count is total - augmented.
+    ds1_counts = [np.sum(y_ds1 == c) for c in range(4)]
+    ds2_counts = [np.sum(y_ds2 == c) for c in range(4)]
+
+    # The original (pre-augmentation) V count in DS1: since V was augmented to match N,
+    # we need to infer it. We know N count = V count after balancing.
+    # Original V count is unknown from the balanced file, so we use DS2's V/N ratio
+    # as a proxy OR we can just load the raw data and count.
+    # Actually, let's just show DS1 (after balancing) vs DS2 (natural distribution)
+    # to illustrate the imbalance problem AND what we did about it.
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    # Left: DS2 (Natural/Unbalanced distribution — what the real world looks like)
+    colors_ds2 = ["#2196F3", "#FF9800", "#F44336", "#9C27B0"]
+    bars1 = axes[0].bar(class_names, ds2_counts, color=colors_ds2, edgecolor="black", linewidth=0.8)
+    axes[0].set_title("DS2 (Test Set) — Natural Distribution", fontsize=13, fontweight="bold")
+    axes[0].set_xlabel("AAMI Class")
+    axes[0].set_ylabel("Number of Beats")
+    axes[0].set_yscale("log")
+    for bar, count in zip(bars1, ds2_counts):
+        axes[0].text(bar.get_x() + bar.get_width()/2., bar.get_height(),
+                     f'{count:,}', ha='center', va='bottom', fontweight='bold', fontsize=11)
+
+    # Right: DS1 (After N-V balancing — what we train on)
+    colors_ds1 = ["#2196F3", "#FF9800", "#4CAF50", "#9C27B0"]
+    bars2 = axes[1].bar(class_names, ds1_counts, color=colors_ds1, edgecolor="black", linewidth=0.8)
+    axes[1].set_title("DS1 (Training Set) — After N↔V Balancing", fontsize=13, fontweight="bold")
+    axes[1].set_xlabel("AAMI Class")
+    axes[1].set_ylabel("Number of Beats")
+    axes[1].set_yscale("log")
+    for bar, count in zip(bars2, ds1_counts):
+        axes[1].text(bar.get_x() + bar.get_width()/2., bar.get_height(),
+                     f'{count:,}', ha='center', va='bottom', fontweight='bold', fontsize=11)
+
+    fig.suptitle("Class Imbalance: Why We Balance N ↔ V Only", fontsize=15, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    plt.savefig(os.path.join(summary_fig_dir, "class_imbalance.png"), dpi=300, bbox_inches="tight")
+    plt.savefig(os.path.join(update_fig_dir, "class_imbalance.png"), dpi=300, bbox_inches="tight")
+    plt.close()
 
 print("Plots generated successfully!")

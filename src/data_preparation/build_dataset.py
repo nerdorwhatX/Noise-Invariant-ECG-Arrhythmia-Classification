@@ -165,11 +165,18 @@ def main():
     logger.info(
         f"DS1 raw: N={np.sum(ds1_y==0)}, S={np.sum(ds1_y==1)}, V={np.sum(ds1_y==2)}, F={np.sum(ds1_y==3)}"
     )
+    logger.info("Balancing DS1 (N vs V)...")
+    ds1_X_bal, ds1_y_bal, ds1_rr_bal = balance_nv(ds1_X, ds1_y, ds1_rr)
+
+    logger.info(
+        f"DS1 balanced: N={np.sum(ds1_y_bal==0)}, S={np.sum(ds1_y_bal==1)}, V={np.sum(ds1_y_bal==2)}, F={np.sum(ds1_y_bal==3)}"
+    )
+
     # Save raw arrays
     logger.info("Saving .npy datasets...")
-    np.save(os.path.join(out_dir, "DS1_X_raw.npy"), ds1_X)
-    np.save(os.path.join(out_dir, "DS1_y.npy"), ds1_y)
-    np.save(os.path.join(out_dir, "DS1_rr.npy"), ds1_rr)
+    np.save(os.path.join(out_dir, "DS1_X_raw.npy"), ds1_X_bal)
+    np.save(os.path.join(out_dir, "DS1_y.npy"), ds1_y_bal)
+    np.save(os.path.join(out_dir, "DS1_rr.npy"), ds1_rr_bal)
 
     np.save(os.path.join(out_dir, "DS2_X_raw.npy"), ds2_X)
     np.save(os.path.join(out_dir, "DS2_y.npy"), ds2_y)
