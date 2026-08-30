@@ -41,6 +41,30 @@ if os.path.exists(hybrid_res_path):
     plt.savefig(os.path.join(update_fig_dir, "cm_hybrid.png"), dpi=300)
     plt.close()
 
+# 1.3 Plot DSP Expert Confusion Matrix
+dsp_res_path = os.path.join(results_dir, "dsp_expert_results.json")
+if os.path.exists(dsp_res_path):
+    with open(dsp_res_path, "r") as f:
+        dsp_res = json.load(f)
+    if "confusion_matrix" in dsp_res:
+        cm_dsp = np.array(dsp_res["confusion_matrix"])
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(
+            cm_dsp,
+            annot=True,
+            fmt="d",
+            cmap="Blues",
+            xticklabels=["N", "S", "V", "F"],
+            yticklabels=["N", "S", "V", "F"],
+        )
+        plt.title("DSP Expert (Rule-based) Confusion Matrix")
+        plt.xlabel("Predicted Label")
+        plt.ylabel("True Label")
+        plt.tight_layout()
+        plt.savefig(os.path.join(summary_fig_dir, "cm_expert.png"), dpi=300)
+        plt.savefig(os.path.join(update_fig_dir, "cm_expert.png"), dpi=300)
+        plt.close()
+
 # 1.5. Plot ResNet Confusion Matrix
 dl_res_path = os.path.join(results_dir, "resnet1d_se_results.json")
 if os.path.exists(dl_res_path):
