@@ -41,6 +41,29 @@ if os.path.exists(hybrid_res_path):
     plt.savefig(os.path.join(update_fig_dir, "cm_hybrid.png"), dpi=300)
     plt.close()
 
+# 1.5. Plot ResNet Confusion Matrix
+dl_res_path = os.path.join(results_dir, "resnet1d_se_results.json")
+if os.path.exists(dl_res_path):
+    with open(dl_res_path, "r") as f:
+        dl_res = json.load(f)
+    dl_cm = np.array(dl_res["confusion_matrix"])
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(
+        dl_cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=["N", "S", "V", "F"],
+        yticklabels=["N", "S", "V", "F"],
+    )
+    plt.title("ResNet1D-SE (Deep Learning) Confusion Matrix")
+    plt.xlabel("Predicted Label")
+    plt.ylabel("True Label")
+    plt.tight_layout()
+    plt.savefig(os.path.join(summary_fig_dir, "cm_resnet.png"), dpi=300)
+    plt.savefig(os.path.join(update_fig_dir, "cm_resnet.png"), dpi=300)
+    plt.close()
+
 # 2. Plot NSTDB Stress Test Comparison
 dsp_nstdb = os.path.join(results_dir, "nstdb_stress_test.json")
 dl_nstdb = os.path.join(results_dir, "nstdb_resnet1d_se_stress_test.json")
@@ -63,6 +86,10 @@ if (
     dsp_acc = [dsp_res[str(s)]["accuracy"] for s in snrs]
     dl_acc = [dl_res[str(s)]["accuracy"] for s in snrs]
     hyb_acc = [hyb_res[str(s)]["accuracy"] for s in snrs]
+
+    dsp_f2 = [dsp_res[str(s)]["weighted_f2"] for s in snrs]
+    dl_f2 = [dl_res[str(s)]["weighted_f2"] for s in snrs]
+    hyb_f2 = [hyb_res[str(s)]["weighted_f2"] for s in snrs]
 
     plt.figure(figsize=(10, 6))
     plt.plot(
@@ -100,6 +127,44 @@ if (
     plt.tight_layout()
     plt.savefig(os.path.join(summary_fig_dir, "nstdb_comparison.png"), dpi=300)
     plt.savefig(os.path.join(update_fig_dir, "nstdb_comparison.png"), dpi=300)
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(
+        snrs,
+        dsp_f2,
+        marker="o",
+        linestyle=":",
+        color="gray",
+        label="DSP Expert (Rule-based)",
+    )
+    plt.plot(
+        snrs,
+        dl_f2,
+        marker="^",
+        linestyle="--",
+        color="orange",
+        label="ResNet1D-SE (Deep Learning)",
+    )
+    plt.plot(
+        snrs,
+        hyb_f2,
+        marker="s",
+        linestyle="-",
+        color="green",
+        linewidth=2.5,
+        label="Hybrid ML Ensemble",
+    )
+
+    plt.title("NSTDB Stress Test: Weighted F2 Score vs. SNR")
+    plt.xlabel("SNR (dB)")
+    plt.ylabel("Weighted F2 Score")
+    plt.gca().invert_xaxis()
+    plt.legend()
+    plt.grid(True, alpha=0.5)
+    plt.tight_layout()
+    plt.savefig(os.path.join(summary_fig_dir, "nstdb_f2_comparison.png"), dpi=300)
+    plt.savefig(os.path.join(update_fig_dir, "nstdb_f2_comparison.png"), dpi=300)
     plt.close()
 
 # 3. Plot LightGBM Feature Importance
