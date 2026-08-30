@@ -25,9 +25,9 @@ Project/
 
 | Model | Type | Accuracy | Weighted F2 | Status |
 |-------|------|----------|-------------|--------|
-| DSP Expert | Rule-based (no ML) | 65.02% | 0.6710 | ✅ Complete |
-| Deep Learning (1D-CNN) | ResNet1D-SE | 75.72% | 0.7713 | ✅ Complete |
-| Hybrid ML Ensemble | LightGBM + TDA | **92.35%** | **0.9209** | ✅ Complete |
+| DSP Expert | Rule-based (no ML) | 65.82% | 0.6794 | ✅ Complete |
+| Deep Learning (1D-CNN) | ResNet1D-SE | 64.57% | 0.6695 | ✅ Complete |
+| Hybrid ML Ensemble | LightGBM + TDA | **89.83%** | **0.8992** | ✅ Complete |
 
 ## Quick Start
 
