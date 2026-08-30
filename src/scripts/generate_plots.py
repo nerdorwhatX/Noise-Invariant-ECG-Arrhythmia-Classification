@@ -240,31 +240,52 @@ if os.path.exists(ds1_y_path) and os.path.exists(ds2_y_path):
     # Actually, let's just show DS1 (after balancing) vs DS2 (natural distribution)
     # to illustrate the imbalance problem AND what we did about it.
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 12))
 
-    # Left: DS2 (Natural/Unbalanced distribution — what the real world looks like)
-    colors_ds2 = ["#2196F3", "#FF9800", "#F44336", "#9C27B0"]
-    bars1 = axes[0].bar(class_names, ds2_counts, color=colors_ds2, edgecolor="black", linewidth=0.8)
-    axes[0].set_title("DS2 (Test Set) — Natural Distribution", fontsize=13, fontweight="bold")
-    axes[0].set_xlabel("AAMI Class")
-    axes[0].set_ylabel("Number of Beats")
-    axes[0].set_yscale("log")
-    for bar, count in zip(bars1, ds2_counts):
-        axes[0].text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                     f'{count:,}', ha='center', va='bottom', fontweight='bold', fontsize=11)
+    # DS1 Original (Hardcoded from build_dataset logs before augmentation)
+    ds1_orig_counts = [45935, 932, 4173, 417]
+    colors_orig = ["#2196F3", "#FF9800", "#F44336", "#9C27B0"]
+    
+    # Top-Left: DS1 Before
+    bars1 = axes[0, 0].bar(class_names, ds1_orig_counts, color=colors_orig, edgecolor="black", linewidth=0.8)
+    axes[0, 0].set_title("DS1 (Training Set) — Before Balancing", fontsize=13, fontweight="bold")
+    axes[0, 0].set_ylabel("Number of Beats")
+    axes[0, 0].set_yscale("log")
+    for bar, count in zip(bars1, ds1_orig_counts):
+        axes[0, 0].text(bar.get_x() + bar.get_width()/2., bar.get_height(),
+                        f'{count:,}', ha='center', va='bottom', fontweight='bold', fontsize=11)
 
-    # Right: DS1 (After N-V balancing — what we train on)
-    colors_ds1 = ["#2196F3", "#FF9800", "#4CAF50", "#9C27B0"]
-    bars2 = axes[1].bar(class_names, ds1_counts, color=colors_ds1, edgecolor="black", linewidth=0.8)
-    axes[1].set_title("DS1 (Training Set) — After N↔V Balancing", fontsize=13, fontweight="bold")
-    axes[1].set_xlabel("AAMI Class")
-    axes[1].set_ylabel("Number of Beats")
-    axes[1].set_yscale("log")
+    # Top-Right: DS1 After N↔V Balancing
+    colors_ds1_after = ["#2196F3", "#FF9800", "#4CAF50", "#9C27B0"]
+    bars2 = axes[0, 1].bar(class_names, ds1_counts, color=colors_ds1_after, edgecolor="black", linewidth=0.8)
+    axes[0, 1].set_title("DS1 (Training Set) — After N↔V Balancing", fontsize=13, fontweight="bold")
+    axes[0, 1].set_ylabel("Number of Beats")
+    axes[0, 1].set_yscale("log")
     for bar, count in zip(bars2, ds1_counts):
-        axes[1].text(bar.get_x() + bar.get_width()/2., bar.get_height(),
-                     f'{count:,}', ha='center', va='bottom', fontweight='bold', fontsize=11)
+        axes[0, 1].text(bar.get_x() + bar.get_width()/2., bar.get_height(),
+                        f'{count:,}', ha='center', va='bottom', fontweight='bold', fontsize=11)
 
-    fig.suptitle("Class Imbalance: Why We Balance N ↔ V Only", fontsize=15, fontweight="bold", y=1.02)
+    # Bottom-Left: DS2 Before
+    bars3 = axes[1, 0].bar(class_names, ds2_counts, color=colors_orig, edgecolor="black", linewidth=0.8)
+    axes[1, 0].set_title("DS2 (Test Set) — Natural Distribution", fontsize=13, fontweight="bold")
+    axes[1, 0].set_xlabel("AAMI Class")
+    axes[1, 0].set_ylabel("Number of Beats")
+    axes[1, 0].set_yscale("log")
+    for bar, count in zip(bars3, ds2_counts):
+        axes[1, 0].text(bar.get_x() + bar.get_width()/2., bar.get_height(),
+                        f'{count:,}', ha='center', va='bottom', fontweight='bold', fontsize=11)
+
+    # Bottom-Right: DS2 After (Identical)
+    bars4 = axes[1, 1].bar(class_names, ds2_counts, color=colors_orig, edgecolor="black", linewidth=0.8)
+    axes[1, 1].set_title("DS2 (Test Set) — Unchanged (Strict Isolation)", fontsize=13, fontweight="bold")
+    axes[1, 1].set_xlabel("AAMI Class")
+    axes[1, 1].set_ylabel("Number of Beats")
+    axes[1, 1].set_yscale("log")
+    for bar, count in zip(bars4, ds2_counts):
+        axes[1, 1].text(bar.get_x() + bar.get_width()/2., bar.get_height(),
+                        f'{count:,}', ha='center', va='bottom', fontweight='bold', fontsize=11)
+
+    fig.suptitle("Class Imbalance: Training (DS1) vs Testing (DS2)", fontsize=16, fontweight="bold", y=1.02)
     plt.tight_layout()
     plt.savefig(os.path.join(summary_fig_dir, "class_imbalance.png"), dpi=300, bbox_inches="tight")
     plt.savefig(os.path.join(update_fig_dir, "class_imbalance.png"), dpi=300, bbox_inches="tight")
